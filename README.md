@@ -1,92 +1,72 @@
 # TSP IR Analyzer (Web Audio, OATSP)
 
-📈 Web Audio API を使った **Time-Stretched Pulse (OATSP)** ベースの  
-Impulse Response (IR) / Transfer Function analyzer.  
-ブラウザだけで動作し、マイク入力とスピーカー出力を利用して計測できます。  
+📈 A browser-based **Time-Stretched Pulse (OATSP)** analyzer for impulse response (IR) and transfer function measurement.  
+ブラウザだけで動作する **OATSP（時間伸長パルス）法** に基づくインパルス応答・伝達関数解析アプリです。
 
-This app runs fully in the browser (no server required),  
-using **Web Audio API** for playback, recording, and FFT deconvolution.  
+---
+
+## 🌐 Live Demo / 公開ページ
+
+👉 [TSP IR Analyzer on GitHub Pages](https://hsksts.github.io/tsp-ir-analyzer/)
 
 ---
 
 ## ✨ Features / 機能
 
-- Generate **OATSP (Time-Stretched Pulse)** signals (DOWN / UP)  
-  OATSP（TSP）信号を生成（DOWN / UP 両対応）
-- Record microphone input simultaneously with playback  
-  再生と同時にマイク録音
-- Analyze impulse response and transfer function |H(f)|  
-  インパルス応答と伝達関数 |H(f)| を解析
-- Live spectrum analyzer for the selected input device  
-  入力デバイスのリアルタイムスペクトラム表示
-- Self-Test mode (DOWN⊛UP convolution ≈ delta pulse)  
-  セルフテスト（DOWN⊛UP 畳み込みで理想的なパルス確認）
+- Generate **OATSP (TSP) signals** (DOWN / UP)  
+  OATSP（DOWN / UP）の信号生成
+- Play & record simultaneously / 同時再生・録音
+- Impulse response & transfer function analysis  
+  インパルス応答・伝達関数の解析（FFT逆畳み込み）
+- Live spectrum analyzer (input device)  
+  入力デバイスのリアルタイムスペクトル表示
+- Self-Test (DOWN⊛UP convolution ≈ delta pulse)  
+  セルフテスト機能（DOWN⊛UP 畳み込みで理想パルス確認）
 - Export WAV files (TSP / Recording / IR / Self-Test)  
-  WAV ファイル出力（TSP / 録音 / IR / セルフテスト）
+  WAV ダウンロード（TSP / 録音 / IR / セルフテスト）
 - Output device selection (Chrome only)  
-  出力デバイス選択（Chrome のみ対応）
+  出力デバイス切替（Chrome のみ対応）
 
 ---
 
-## 🚀 Demo / デモ
+## 🖥 How to Use / 使い方
 
-GitHub Pages:  
-👉 https://<your-username>.github.io/<repository-name>/
+1. **Mic permission**: Allow microphone access when prompted.  
+   初回アクセス時にマイク使用を許可してください。
+2. **Generate TSP**: Click *🎛️ TSP生成* to create Down/Up signals.  
+   「🎛️ TSP生成」で Down/Up TSP を生成。
+3. **Play & Record**: Click *▶️ 再生＆録音* to excite and record.  
+   「▶️ 再生＆録音」でスピーカー出力とマイク録音を同時実行。
+4. **Analyze**: Click *🧮 解析* to compute IR and |H(f)|.  
+   「🧮 解析」でインパルス応答・伝達関数を算出。
+5. **Self-Test** (optional): Use *🧪 Self-Test* to check TSP pair.  
+   「🧪 Self-Test」で生成TSPの動作確認。
 
 ---
 
 ## 📂 File Structure / ファイル構成
 
 ```
-index.html           # Main HTML / メインHTML
-app.js               # Application logic / アプリ本体
+index.html           # UI / メインページ
+app.js               # Core logic / アプリ本体
 recorder-worklet.js  # AudioWorkletProcessor for recording / 録音用ワークレット
-tsp.js               # TSP generation functions / TSP生成関数
+tsp.js               # TSP generation utilities / TSP生成関数
 ```
 
 ---
 
-## 🛠 Development / 開発・ローカル実行
+## ⚠ Notes / 注意事項
 
-1. Clone repository / リポジトリをクローン  
-   ```bash
-   git clone https://github.com/<your-username>/<repository-name>.git
-   cd <repository-name>
-   ```
-
-2. Run local server / ローカルサーバを起動（例: Python）  
-   ```bash
-   python3 -m http.server 8000
-   ```
-   or use VSCode Live Server. / VSCode Live Server なども可
-
-3. Open in browser / ブラウザでアクセス  
-   - http://localhost:8000  
-   - HTTPS is not required for localhost / localhost では HTTPS 不要
-
----
-
-## 🌐 Publish on GitHub Pages / GitHub Pages で公開
-
-1. Go to **Settings → Pages** / リポジトリの **Settings → Pages** を開く  
-2. Select **Deploy from a branch** / **Source: Deploy from a branch** を選択  
-3. Set **Branch: main, Folder: /(root)** / **Branch: main, Folder: /(root)** を指定  
-4. Save → wait a few minutes / 保存後、数分で公開URLが表示されます  
-
----
-
-## ⚠ Notes / 注意点
-
-- **HTTPS required** for `getUserMedia` (mic) and `setSinkId` (output device)  
-  マイク取得・出力切替は HTTPS または localhost でのみ動作
-- **Browser compatibility / ブラウザ対応**  
-  - Output device selection works best in Chrome / 出力デバイス切替は Chrome 系のみ安定  
-  - Safari (esp. iOS) has limitations / Safari (特にiOS) は制限あり
-- **Permissions / 権限**: Allow microphone access when prompted  
-  初回アクセス時にマイク権限を許可してください
-- **Audio environment / オーディオ環境**  
-  Loopback/stereo-mixer enabled may affect IR  
-  ループバック・ステレオミキサー設定が有効だと測定に影響します
+- **HTTPS required**: Works only on HTTPS or localhost.  
+  HTTPS または localhost でのみ動作します。
+- **Browser support**:  
+  - Chrome recommended (full support for setSinkId).  
+  - Safari (especially iOS) has limitations.  
+  Chrome 系ブラウザ推奨（Safari/iOS は制限あり）。
+- **Output device selection**: `setSinkId` is Chrome-only.  
+  出力デバイス切替は Chrome 限定。
+- **Audio environment**: Loopback/stereo-mixer may affect IR.  
+  ループバック・ステレオミキサーが有効だと解析に影響する場合があります。
 
 ---
 

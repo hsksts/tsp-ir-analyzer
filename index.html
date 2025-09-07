@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TSP IR Analyzer (Web Audio, OATSP) + Live Spectrum</title>
+  <style>
+    :root { --fg:#111; --bg:#fafafa; --muted:#666; --card:#fff; --border:#e5e5e5; --accent:#0a7; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:24px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans JP,sans-serif; color:var(--fg); background:var(--bg); }
+    h1 { margin:0 0 12px; font-size:1.3rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.04); margin-bottom:16px; }
+    .row { display:grid; gap:12px; }
+    .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:end; }
+    .controls label { display:flex; flex-direction:column; font-size:.9rem; color:var(--muted); }
+    .btn { padding:8px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
+    .btn.primary { background:var(--accent); color:#fff; border-color:transparent; }
+    .grid2 { display:grid; grid-template-columns: repeat(2, minmax(200px,1fr)); gap:12px; }
+    canvas { width:100%; height:220px; background:#111; border-radius:12px; }
+    .small { font-size:.85rem; color:var(--muted); }
+    .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 12px; align-items:center; }
+    .downloads a { margin-right:12px; }
+    input[type="number"], input[type="range"], select, input[readonly] { font:inherit; }
+    input[readonly] { background:#f4f4f4; border:1px solid var(--border); padding:6px 8px; border-radius:8px; color:#444; }
+    .label-white { color:#fff; margin-bottom:6px; }
+    .warn { color:#b00; font-size:.85rem; }
+    .inline { display:flex; align-items:center; gap:8px; }
+  </style>
+</head>
+<body>
+  <h1>📈 Time‑Stretched Pulse (OATSP) IR Analyzer + Live Spectrum</h1>
+
+  <div class="card row">
+    <div class="controls">
+      <label>Jisu（信号次数, N=2^Jisu）
+        <input id="jisu" type="number" min="10" max="22" step="1" value="18">
+      </label>
+      <label>振幅 A
+        <input id="ampA" type="number" min="0.1" step="0.1" value="4">
+      </label>
+      <label>テイル無音（s）
+        <input id="silenceTail" type="number" min="0" step="0.5" value="2">
+      </label>
+      <label>再生レベル（0–1）
+        <input id="playGain" type="range" min="0" max="1" step="0.01" value="0.8">
+      </label>
+      <label>再生信号
+        <select id="playSig">
+          <option value="down" selected>DOWN (excitation)</option>
+          <option value="up">UP (inverse)</option>
+        </select>
+      </label>
+      <label>マイク（入力）
+        <select id="micSelect"></select>
+      </label>
+      <label>スピーカー（出力）
+        <select id="spkSelect"></select>
+      </label>
+      <span id="sinkNote" class="small"></span>
+      <label>サンプルレート（表示）
+        <input id="fsDisp" type="text" readonly>
+      </label>
+      <label class="inline">
+        <input id="normDisplay" type="checkbox" checked>
+        表示を基準化（Recording/IR/Self‑Test）
+      </label>
+    </div>
+    <div class="controls">
+      <button id="genBtn" class="btn">🎛️ 1) TSP生成（downTSP / upTSP）</button>
+      <button id="playRecBtn" class="btn primary">▶️ 2) 再生＆録音</button>
+      <button id="analyzeBtn" class="btn">🧮 3) 解析（IR / TF）</button>
+      <button id="monitorBtn" class="btn">🔎 Mic Monitor: OFF</button>
+      <button id="selfTestBtn" class="btn">🧪 Self‑Test (DOWN ⊛ UP)</button>
+    </div>
+    <div class="small">
+      OATSP（TSP）を <b>周波数領域で構成 → IFFT → 円状シフト</b>。解析は <b>FFT 逆畳み込み</b>。<br>
+      スペクトルアナライザは<b>選択した入力デバイスのみ</b>を監視。表示は任意で基準化できます。
+    </div>
+  </div>
+
+  <div class="card row">
+    <div class="kv">
+      <div>Excitation（downTSP）:</div><div id="excitationInfo">-</div>
+      <div>Inverse（upTSP）:</div><div id="inverseInfo">-</div>
+      <div>Recording:</div><div id="recordingInfo">-</div>
+      <div>Alignment lag (samples):</div><div id="lagInfo">-</div>
+      <div>Sample Rate:</div><div id="srInfo">-</div>
+    </div>
+    <div class="downloads" id="dlArea"></div>
+    <div id="httpsWarn" class="warn"></div>
+  </div>
+
+  <div class="card row">
+    <div class="label-white">Mic Spectrum (Live, log‑f)</div>
+    <canvas id="micSpectrum" width="900" height="220" aria-label="Mic Spectrum Analyzer"></canvas>
+  </div>
+
+  <div class="card row grid2">
+    <div>
+      <div class="label-white">Time Domain (preview / Recording / IR)</div>
+      <canvas id="irCanvas" width="900" height="220" aria-label="Impulse Response"></canvas>
+    </div>
+    <div>
+      <div class="label-white">Transfer Function |H(f)| (dB)</div>
+      <canvas id="magCanvas" width="900" height="220" aria-label="Magnitude Response"></canvas>
+    </div>
+  </div>
+
+  <!-- 出力デバイス切替用：WebAudio→MediaStreamDestination→このaudioへ -->
+  <audio id="sinkAudio" autoplay playsinline></audio>
+
+  <script src="recorder-worklet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
